@@ -25,6 +25,7 @@ object Apply {
             else -> set(mode == "moon",
                 WallpaperManager.FLAG_SYSTEM or (if (lock) WallpaperManager.FLAG_LOCK else 0))
         }
+        p.edit().putLong("last", System.currentTimeMillis()).apply()
     }
 }
 
