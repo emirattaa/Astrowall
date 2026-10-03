@@ -38,9 +38,6 @@ class MainActivity : Activity() {
         mode = prefs.getString("mode", "earth") ?: "earth"
         Thread { try { Real.refresh(this, false); Real.refresh(this, true) } catch (e: Exception) {} }.start()
 
-        val space = SpaceView(this)
-        space.alpha = 0f
-
         // ---- içerik ----
         val col = LinearLayout(this)
         col.orientation = LinearLayout.VERTICAL
@@ -51,7 +48,7 @@ class MainActivity : Activity() {
         title.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         title.setPadding(0, dp(6), 0, 0)
         col.addView(title)
-        val subtitle = label("Gerçek NASA uydu görüntüleriyle duvar kağıdın her saat başı kendini yeniler.",
+        val subtitle = label("Siyah zeminde gerçek NASA görüntüsü. Her saat başı kendini yeniler.",
             14f, Color.argb(170, 255, 255, 255), 0f)
         subtitle.setPadding(0, dp(8), 0, 0)
         col.addView(subtitle)
@@ -65,7 +62,6 @@ class MainActivity : Activity() {
 
         // ---- seçenekler (önce oluştur; kartlar bunlara bağlı) ----
         val lock = makeSwitch("Kilit ekranına da uygula", prefs.getBoolean("lock", true))
-        val info = makeSwitch("Görüntü üzerinde bilgi yazısı", prefs.getBoolean("info", true))
 
         fun select(key: String) {
             mode = key
@@ -93,9 +89,8 @@ class MainActivity : Activity() {
         val opts = LinearLayout(this)
         opts.orientation = LinearLayout.VERTICAL
         opts.setPadding(dp(18), dp(4), dp(18), dp(4))
-        opts.background = box(22, Color.argb(165, 12, 16, 34), 1, Color.argb(45, 255, 255, 255))
+        opts.background = box(22, Color.argb(255, 12, 14, 24), 1, Color.argb(45, 255, 255, 255))
         opts.addView(lock, LinearLayout.LayoutParams(matchP, dp(56)))
-        opts.addView(info, LinearLayout.LayoutParams(matchP, dp(56)))
         col.addView(opts, LinearLayout.LayoutParams(matchP, wrapP))
 
         // ---- uygula düğmesi ----
@@ -129,7 +124,7 @@ class MainActivity : Activity() {
 
         btn.setOnClickListener {
             prefs.edit().putString("mode", mode)
-                .putBoolean("lock", lock.isChecked).putBoolean("info", info.isChecked).apply()
+                .putBoolean("lock", lock.isChecked).apply()
             WorkManager.getInstance(this).enqueueUniquePeriodicWork(
                 "wall", ExistingPeriodicWorkPolicy.UPDATE,
                 PeriodicWorkRequest.Builder(WallWorker::class.java, 1, TimeUnit.HOURS).build())
@@ -178,11 +173,10 @@ class MainActivity : Activity() {
         scroll.addView(col)
 
         val frame = FrameLayout(this)
-        frame.addView(space, FrameLayout.LayoutParams(matchP, matchP))
+        frame.setBackgroundColor(Color.BLACK)
         frame.addView(scroll, FrameLayout.LayoutParams(matchP, matchP))
         globe = GlobeView(this, mode == "moon") {
             frame.removeView(globe)
-            space.animate().alpha(1f).setDuration(700).start()
             scroll.animate().alpha(1f).setDuration(700).start()
         }
         frame.addView(globe)
@@ -252,9 +246,9 @@ class MainActivity : Activity() {
         for (c in cards) {
             val sel = c.key == mode
             c.root.background = if (sel)
-                box(22, Color.argb(205, 22, 42, 84), 2, accent)
+                box(22, Color.rgb(18, 32, 64), 2, accent)
             else
-                box(22, Color.argb(165, 12, 16, 34), 1, Color.argb(45, 255, 255, 255))
+                box(22, Color.rgb(12, 14, 24), 1, Color.argb(45, 255, 255, 255))
             c.check.visibility = if (sel) View.VISIBLE else View.INVISIBLE
         }
     }
