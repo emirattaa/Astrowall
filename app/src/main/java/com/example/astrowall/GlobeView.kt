@@ -26,6 +26,7 @@ class GlobeView(ctx: Context, private val moon: Boolean, private val onDone: () 
         setOnClickListener { finish() }
         Thread {
             val tex = Astro.loadTex(context, if (moon) "moon.jpg" else "earth.jpg", 2048)
+            val lights = if (moon) null else Astro.loadTex(context, "earth_lights.jpg", 2048)
             val photo = Real.cached(context, moon)
             var hasPhoto = false
             if (photo != null) {
@@ -48,8 +49,8 @@ class GlobeView(ctx: Context, private val moon: Boolean, private val onDone: () 
                 val p = 1f - (1f - x) * (1f - x) * (1f - x)
                 val back = if (moon) 14.7 * Astro.DAY else Astro.DAY
                 val ms = endMs - (back * (1 - p)).toLong()
-                if (useMeta) Astro.disc(tex, moon, s, ms, endMs, out, lat, lon)
-                else Astro.disc(tex, moon, s, ms, endMs, out)
+                if (useMeta) Astro.disc(tex, moon, s, ms, endMs, out, lat, lon, lights)
+                else Astro.disc(tex, moon, s, ms, endMs, out, lights = lights)
                 synchronized(lock) { bmp.setPixels(out, 0, s, 0, 0, s, s) }
                 val fin = (e / 1300f).coerceIn(0f, 1f)
                 val fout = ((e - 4100f) / 1500f).coerceIn(0f, 1f)
@@ -68,6 +69,11 @@ class GlobeView(ctx: Context, private val moon: Boolean, private val onDone: () 
         finished = true
         running = false
         onDone()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
+        super.onSizeChanged(w, h, ow, oh)
+        if (w > 0 && h > 0) Space.prepare(w, h) { postInvalidate() }
     }
 
     override fun onDetachedFromWindow() { running = false; super.onDetachedFromWindow() }
