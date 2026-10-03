@@ -71,11 +71,6 @@ class GlobeView(ctx: Context, private val moon: Boolean, private val onDone: () 
         onDone()
     }
 
-    override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
-        super.onSizeChanged(w, h, ow, oh)
-        if (w > 0 && h > 0) Space.prepare(w, h) { postInvalidate() }
-    }
-
     override fun onDetachedFromWindow() { running = false; super.onDetachedFromWindow() }
 
     override fun onDraw(c: Canvas) {
