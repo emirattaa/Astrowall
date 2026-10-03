@@ -13,7 +13,8 @@ import kotlin.math.*
 
 /** Gerçek NASA görüntüleri: Dünya = DSCOVR/EPIC uydu fotoğrafı, Ay = NASA SVS saatlik Ay karesi (LRO verisi). */
 object Real {
-    private class Meta(val url: String, val ms: Long, val lat: Double, val lon: Double)
+    private const val KEY = "DcyBn0q2XoUAHLvrGtt7fcBjB2RqD3jJqb29NPFV"
+    private class Meta(val url: String, val alt: String, val ms: Long, val lat: Double, val lon: Double)
 
     private fun get(url: String): ByteArray? = try {
         val c = URL(url).openConnection() as HttpURLConnection
@@ -23,7 +24,8 @@ object Real {
     } catch (e: Exception) { null }
 
     private fun earthMeta(): Meta? = try {
-        val txt = get("https://epic.gsfc.nasa.gov/api/natural")?.toString(Charsets.UTF_8)
+        val txt = (get("https://api.nasa.gov/EPIC/api/natural/images?api_key=$KEY")
+            ?: get("https://epic.gsfc.nasa.gov/api/natural"))?.toString(Charsets.UTF_8)
         val arr = JSONArray(txt)
         val o = arr.getJSONObject(arr.length() - 1)
         val date = o.getString("date") // "2026-09-30 23:44:00"
@@ -31,7 +33,8 @@ object Real {
         val ms = f.parse(date)!!.time
         val (y, m, d) = date.substring(0, 10).split("-")
         val cc = o.optJSONObject("centroid_coordinates")
-        Meta("https://epic.gsfc.nasa.gov/archive/natural/$y/$m/$d/jpg/${o.getString("image")}.jpg",
+        Meta("https://api.nasa.gov/EPIC/archive/natural/$y/$m/$d/jpg/${o.getString("image")}.jpg?api_key=$KEY",
+            "https://epic.gsfc.nasa.gov/archive/natural/$y/$m/$d/jpg/${o.getString("image")}.jpg",
             ms, cc?.optDouble("lat", 0.0) ?: 0.0, cc?.optDouble("lon", 0.0) ?: 0.0)
     } catch (e: Exception) { null }
 
@@ -49,7 +52,7 @@ object Real {
             if (b != null && b.size > 5000) f.writeBytes(b)
         } else {
             val m = earthMeta() ?: return
-            val b = get(m.url)
+            val b = get(m.url) ?: get(m.alt)
             if (b != null && b.size > 20000) {
                 f.writeBytes(b)
                 ctx.getSharedPreferences("meta", 0).edit()
