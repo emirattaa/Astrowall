@@ -8,8 +8,7 @@ GitHub'a yükle → **Actions** sekmesi derler → **Releases**'ten `app-debug.a
 ## Özellikler
 - **Dünya**: NASA EPIC (DSCOVR) uydusundan canlı tam disk fotoğrafı
 - **Ay**: NASA SVS saatlik Ay karesi (LRO verisi) + Türkçe evre bilgisi
-- Yıldızlı uzay arka planı: nebula, Samanyolu, renkli ve parlak yıldızlar
-- Gezegen arkasında yumuşak ışık hâlesi, altında zarif bilgi yazısı (kapatılabilir)
+- Saf siyah zemin, yıldız veya süs yok: yalnızca gezegen
 - Açılışta zaman atlamalı dönen küre; gece tarafında şehir ışıkları
 - Ana ekran / kilit ekranı için ayrı seçim (Dünya + Ay birlikte de olur)
 
