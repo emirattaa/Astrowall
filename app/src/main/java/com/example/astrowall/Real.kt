@@ -61,13 +61,13 @@ object Real {
         }
     }
 
-    fun cached(ctx: Context, moon: Boolean): Bitmap? {
+    fun cached(ctx: Context, moon: Boolean, sample: Int = if (moon) 1 else 2): Bitmap? {
         val f = File(ctx.cacheDir, if (moon) "moon_real.jpg" else "earth_real.jpg")
         if (!f.exists()) return null
-        return BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = if (moon) 1 else 2 })
+        return BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
-    fun fetch(ctx: Context, moon: Boolean): Bitmap? { refresh(ctx, moon); return cached(ctx, moon) }
+    fun fetch(ctx: Context, moon: Boolean): Bitmap? { refresh(ctx, moon); return cached(ctx, moon, 1) }
 
     private fun pack(a: Float, r: Float, g: Float, b: Float) =
         ((a * 255f).toInt().coerceIn(0, 255) shl 24) or (r.toInt().coerceIn(0, 255) shl 16) or
