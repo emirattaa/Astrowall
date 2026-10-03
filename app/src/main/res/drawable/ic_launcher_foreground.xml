@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- atmosfer hâlesi -->
+    <path
+        android:fillColor="#332F7BFF"
+        android:pathData="M50,58m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0" />
+    <!-- gezegen -->
+    <path
+        android:fillColor="#2C6BD8"
+        android:pathData="M50,58m-23,0a23,23 0,1 1,46 0a23,23 0,1 1,-46 0" />
+    <!-- kıtalar -->
+    <path
+        android:fillColor="#3FA55B"
+        android:pathData="M38,48q6,-6 13,-3q4,6 -2,10q-6,2 -8,6q-6,-4 -3,-13z" />
+    <path
+        android:fillColor="#3FA55B"
+        android:pathData="M58,62q7,-2 8,5q-3,8 -9,6q-4,-5 1,-11z" />
+    <!-- gece tarafı -->
+    <path
+        android:fillColor="#99000812"
+        android:pathData="M50,35a23,23 0,0 1,0 46a12,23 0,0 0,0 -46z" />
+    <!-- küçük Ay -->
+    <path
+        android:fillColor="#E8E6E0"
+        android:pathData="M76,33m-4.5,0a4.5,4.5 0,1 1,9 0a4.5,4.5 0,1 1,-9 0" />
+</vector>
