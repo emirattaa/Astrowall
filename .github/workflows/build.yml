@@ -11,6 +11,13 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.7" }
+      - name: NASA görsellerini indir
+        run: |
+          A=AstroWall/app/src/main/assets
+          mkdir -p $A
+          curl -fL --retry 3 -A "Mozilla/5.0" -o $A/earth.jpg https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_ocean_ice_cloud_2048.jpg
+          curl -fL --retry 3 -A "Mozilla/5.0" -o $A/moon.jpg https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg
+          ls -la $A
       - name: Build
         working-directory: AstroWall
         run: gradle assembleDebug --no-daemon
