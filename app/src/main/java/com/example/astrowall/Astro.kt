@@ -2,7 +2,9 @@ package com.example.astrowall
 
 import android.content.Context
 import android.graphics.*
-import java.util.Random
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.TimeZone
 import kotlin.math.*
 
@@ -65,51 +67,135 @@ object Astro {
 
     private fun smooth(x: Float): Float { val t = x.coerceIn(0f, 1f); return t * t * (3 - 2 * t) }
 
-    fun stars(cv: Canvas, w: Int, h: Int, alpha: Int = 255) {
-        val rnd = Random(42)
-        val p = Paint(Paint.ANTI_ALIAS_FLAG)
-        repeat(w * h / 5000) {
-            val x = rnd.nextFloat() * w
-            val y = rnd.nextFloat() * h
-            val b = 70 + rnd.nextInt(185)
-            p.color = Color.argb(alpha * b / 255, 255, 255, 255)
-            cv.drawCircle(x, y, 0.5f + rnd.nextFloat(), p)
+    /** Önbellekteki yıldızlı uzay arka planını çizer (bkz. Space.kt). */
+    fun stars(cv: Canvas, w: Int, h: Int, alpha: Int = 255) { Space.drawCached(cv, w, h, alpha) }
+
+    class MoonInfo(val age: Double, val illum: Double, val name: String, val emoji: String)
+
+    /** Ay'ın yaşı (gün), aydınlık oranı (0..1), Türkçe evre adı ve emojisi. */
+    fun moonInfo(ms: Long): MoonInfo {
+        val syn = 29.530588853
+        val age = (jd(ms) - 2451550.1).mod(syn)
+        val f = age / syn
+        val illum = (1 - cos(2 * PI * f)) / 2
+        val name = when {
+            f < 0.03 || f >= 0.97 -> "Yeni Ay"
+            f < 0.22 -> "Hilal (büyüyen)"
+            f < 0.28 -> "İlk Dördün"
+            f < 0.47 -> "Şişkin Ay (büyüyen)"
+            f < 0.53 -> "Dolunay"
+            f < 0.72 -> "Şişkin Ay (küçülen)"
+            f < 0.78 -> "Son Dördün"
+            else -> "Hilal (küçülen)"
         }
+        val emoji = listOf("🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘")[((f * 8) + 0.5).toInt() % 8]
+        return MoonInfo(age, illum, name, emoji)
     }
 
-    /** Full wallpaper frame: gerçek NASA görüntüsü (indirilebilirse), yoksa hesaplanan çizim. */
+    /** Menü kartları için küçük küre önizlemesi (gerçek görüntü varsa onu, yoksa hesaplananı kullanır). */
+    fun preview(ctx: Context, moon: Boolean, size: Int): Bitmap {
+        val real = try { Real.cached(ctx, moon) } catch (e: Exception) { null }
+        if (real != null) {
+            val layer = if (moon) Real.moonLayer(real, size) else Real.earthLayer(real, size)
+            real.recycle()
+            return Bitmap.createBitmap(layer, size, size, Bitmap.Config.ARGB_8888)
+        }
+        val out = IntArray(size * size)
+        val now = System.currentTimeMillis()
+        val lights = if (moon) null else loadTex(ctx, "earth_lights.jpg", 1024)
+        disc(loadTex(ctx, if (moon) "moon.jpg" else "earth.jpg", 1024), moon, size, now, now, out, lights = lights)
+        return Bitmap.createBitmap(out, size, size, Bitmap.Config.ARGB_8888)
+    }
+
+    /** Full wallpaper frame: yıldızlı uzay + hale + gerçek NASA görüntüsü (indirilebilirse), yoksa hesaplanan küre + bilgi yazısı. */
     fun render(ctx: Context, moon: Boolean, w: Int, h: Int): Bitmap {
         val now = System.currentTimeMillis()
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
         cv.drawColor(Color.BLACK)
-        stars(cv, w, h)
+        cv.drawBitmap(Space.bitmap(w, h), 0f, 0f, null)
         val r = min(w, h) * 0.42f
+        val cx = w / 2f
+        val cy = h * 0.42f
+
+        // gezegenin arkasında yumuşak ışık hâlesi
+        val gp = Paint(Paint.ANTI_ALIAS_FLAG)
+        if (moon) {
+            val a = (16 + 62 * moonInfo(now).illum).toInt()
+            gp.shader = RadialGradient(cx, cy, r * 1.9f, Color.argb(a, 255, 244, 225),
+                Color.argb(0, 255, 244, 225), Shader.TileMode.CLAMP)
+        } else {
+            gp.shader = RadialGradient(cx, cy, r * 1.85f, Color.argb(70, 70, 130, 255),
+                Color.argb(0, 70, 130, 255), Shader.TileMode.CLAMP)
+        }
+        cv.drawCircle(cx, cy, r * 1.9f, gp)
+
         val s = (r * 2f * 1.2f).toInt()
         val real = try { Real.fetch(ctx, moon) } catch (e: Exception) { null }
         val out: IntArray
+        val usedReal = real != null
         if (real != null) {
             out = if (moon) Real.moonLayer(real, s) else Real.earthLayer(real, s)
             real.recycle()
         } else {
             out = IntArray(s * s)
-            disc(loadTex(ctx, if (moon) "moon.jpg" else "earth.jpg", 2048), moon, s, now, now, out)
+            val lights = if (moon) null else loadTex(ctx, "earth_lights.jpg", 2048)
+            disc(loadTex(ctx, if (moon) "moon.jpg" else "earth.jpg", 2048), moon, s, now, now, out, lights = lights)
         }
         val d = Bitmap.createBitmap(out, s, s, Bitmap.Config.ARGB_8888)
-        cv.drawBitmap(d, w / 2f - s / 2f, h * 0.42f - s / 2f, Paint(Paint.FILTER_BITMAP_FLAG))
+        cv.drawBitmap(d, cx - s / 2f, cy - s / 2f, Paint(Paint.FILTER_BITMAP_FLAG))
         d.recycle()
+
+        if (ctx.getSharedPreferences("p", 0).getBoolean("info", true)) {
+            drawInfo(cv, ctx, moon, w, h, cy, r, usedReal, now)
+        }
         return bmp
+    }
+
+    /** Küre altına zarif bilgi yazısı: ad + (Dünya: görüntü zamanı / Ay: evre, aydınlık, yaş). */
+    private fun drawInfo(cv: Canvas, ctx: Context, moon: Boolean, w: Int, h: Int, cy: Float, r: Float,
+                         real: Boolean, now: Long) {
+        val tr = Locale("tr", "TR")
+        val fmt = SimpleDateFormat("d MMM · HH:mm", tr)
+        val title: String
+        val sub: String
+        if (moon) {
+            val mi = moonInfo(now)
+            title = "AY"
+            sub = "${mi.name} · %${(mi.illum * 100).roundToInt()} aydınlık · ${String.format(tr, "%.1f", mi.age)} gün"
+        } else {
+            title = "DÜNYA"
+            val ems = ctx.getSharedPreferences("meta", 0).getLong("epic_ms", 0L)
+            sub = if (real && ems > 0L) "NASA EPIC · ${fmt.format(Date(ems))}"
+                  else "Canlı hesaplama · ${fmt.format(Date(now))}"
+        }
+        val tp = Paint(Paint.ANTI_ALIAS_FLAG)
+        tp.textAlign = Paint.Align.CENTER
+        tp.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        tp.textSize = w * 0.052f
+        tp.letterSpacing = 0.42f
+        tp.color = Color.argb(240, 255, 255, 255)
+        tp.setShadowLayer(w * 0.012f, 0f, 0f, Color.argb(120, 120, 170, 255))
+        val ty = cy + r + h * 0.055f
+        cv.drawText(title, w / 2f, ty, tp)
+        tp.clearShadowLayer()
+        tp.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        tp.textSize = w * 0.029f
+        tp.letterSpacing = 0.08f
+        tp.color = Color.argb(165, 255, 255, 255)
+        cv.drawText(sub, w / 2f, ty + w * 0.075f, tp)
     }
 
     /** Renders a transparent square s*s containing the globe (disc radius = s/2.4) plus atmosphere halo. */
     fun disc(tex: Tex?, moon: Boolean, s: Int, ms: Long, nowMs: Long, out: IntArray,
-             latDeg: Double = 23.0, lonDeg: Double = TimeZone.getDefault().rawOffset / 3600000.0 * 15.0) {
+             latDeg: Double = 23.0, lonDeg: Double = TimeZone.getDefault().rawOffset / 3600000.0 * 15.0,
+             lights: Tex? = null) {
         val c = s / 2f
         val r = c / 1.2f
-        if (moon) discMoon(tex, s, c, r, ms, out) else discEarth(tex, s, c, r, ms, nowMs, out, latDeg, lonDeg)
+        if (moon) discMoon(tex, s, c, r, ms, out) else discEarth(tex, lights, s, c, r, ms, nowMs, out, latDeg, lonDeg)
     }
 
-    private fun discEarth(tex: Tex?, s: Int, c: Float, r: Float, ms: Long, nowMs: Long, out: IntArray, latDeg: Double, lonDeg: Double) {
+    private fun discEarth(tex: Tex?, lights: Tex?, s: Int, c: Float, r: Float, ms: Long, nowMs: Long, out: IntArray, latDeg: Double, lonDeg: Double) {
         val (decl, sunLon) = sun(ms)
         val lat0 = Math.toRadians(latDeg)
         val lon0 = Math.toRadians(lonDeg) +
@@ -160,6 +246,13 @@ object Astro {
                     val q = cosPhi / 0.1f
                     val tw = exp(-q * q) * 0.6f
                     cr += 70f * tw; cg += 25f * tw
+                    if (tex != null && lights != null && t < 0.98f) {
+                        val lv = (sample(lights, (lon / twoPi + 0.5f).toDouble(),
+                            (0.5f - lat / PI.toFloat()).toDouble()) and 255) / 255f
+                        val nt = 1f - t
+                        val lk = lv * nt * nt
+                        cr += 255f * lk; cg += 188f * lk; cb += 105f * lk
+                    }
                     val rim = d.pow(6) * 0.6f * (0.2f + 0.8f * t)
                     cr = cr * (1 - rim) + 120f * rim
                     cg = cg * (1 - rim) + 175f * rim
