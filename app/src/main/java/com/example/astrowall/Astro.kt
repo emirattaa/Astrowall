@@ -48,7 +48,7 @@ object Astro {
     }
 
     /** bilinear texture sampling, u wraps horizontally */
-    private fun sample(t: Tex, u: Double, v: Double): Int {
+    fun sample(t: Tex, u: Double, v: Double): Int {
         val fx = u * t.w - 0.5
         val fy = (v * t.h - 0.5).coerceIn(0.0, t.h - 1.0)
         val x0 = floor(fx).toInt()
@@ -77,7 +77,7 @@ object Astro {
         }
     }
 
-    /** Full wallpaper frame for the current moment. */
+    /** Full wallpaper frame: gerçek NASA görüntüsü (indirilebilirse), yoksa hesaplanan çizim. */
     fun render(ctx: Context, moon: Boolean, w: Int, h: Int): Bitmap {
         val now = System.currentTimeMillis()
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -86,9 +86,15 @@ object Astro {
         stars(cv, w, h)
         val r = min(w, h) * 0.42f
         val s = (r * 2f * 1.2f).toInt()
-        val out = IntArray(s * s)
-        val tex = loadTex(ctx, if (moon) "moon.jpg" else "earth.jpg", 2048)
-        disc(tex, moon, s, now, now, out)
+        val real = try { Real.fetch(ctx, moon) } catch (e: Exception) { null }
+        val out: IntArray
+        if (real != null) {
+            out = if (moon) Real.moonLayer(real, s) else Real.earthLayer(real, s)
+            real.recycle()
+        } else {
+            out = IntArray(s * s)
+            disc(loadTex(ctx, if (moon) "moon.jpg" else "earth.jpg", 2048), moon, s, now, now, out)
+        }
         val d = Bitmap.createBitmap(out, s, s, Bitmap.Config.ARGB_8888)
         cv.drawBitmap(d, w / 2f - s / 2f, h * 0.42f - s / 2f, Paint(Paint.FILTER_BITMAP_FLAG))
         d.recycle()
@@ -96,16 +102,17 @@ object Astro {
     }
 
     /** Renders a transparent square s*s containing the globe (disc radius = s/2.4) plus atmosphere halo. */
-    fun disc(tex: Tex?, moon: Boolean, s: Int, ms: Long, nowMs: Long, out: IntArray) {
+    fun disc(tex: Tex?, moon: Boolean, s: Int, ms: Long, nowMs: Long, out: IntArray,
+             latDeg: Double = 23.0, lonDeg: Double = TimeZone.getDefault().rawOffset / 3600000.0 * 15.0) {
         val c = s / 2f
         val r = c / 1.2f
-        if (moon) discMoon(tex, s, c, r, ms, out) else discEarth(tex, s, c, r, ms, nowMs, out)
+        if (moon) discMoon(tex, s, c, r, ms, out) else discEarth(tex, s, c, r, ms, nowMs, out, latDeg, lonDeg)
     }
 
-    private fun discEarth(tex: Tex?, s: Int, c: Float, r: Float, ms: Long, nowMs: Long, out: IntArray) {
+    private fun discEarth(tex: Tex?, s: Int, c: Float, r: Float, ms: Long, nowMs: Long, out: IntArray, latDeg: Double, lonDeg: Double) {
         val (decl, sunLon) = sun(ms)
-        val lat0 = Math.toRadians(23.0)
-        val lon0 = Math.toRadians(TimeZone.getDefault().rawOffset / 3600000.0 * 15.0) +
+        val lat0 = Math.toRadians(latDeg)
+        val lon0 = Math.toRadians(lonDeg) +
                 (nowMs - ms) / DAY * 2 * PI // dünya döndükçe görünüm kayar
         val sl0 = sin(lat0); val cl0 = cos(lat0); val so = sin(lon0); val co = cos(lon0)
         val ex = (-so).toFloat(); val ey = co.toFloat()
