@@ -11,21 +11,14 @@ jobs:
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.7" }
-      - name: NASA görsellerini indir
+      - name: Build (proje kökünü otomatik bulur)
         run: |
-          A=AstroWall/app/src/main/assets
-          mkdir -p $A
-          curl -fL --retry 3 -A "Mozilla/5.0" -o $A/earth.jpg https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57735/land_ocean_ice_cloud_2048.jpg
-          curl -fL --retry 3 -A "Mozilla/5.0" -o $A/moon.jpg https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_2k.jpg
-          ls -la $A
-      - name: Build
-        working-directory: AstroWall
-        run: gradle assembleDebug --no-daemon
+          D=$(dirname "$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)")
+          cd "$D"
+          gradle assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
-        with:
-          name: astro-apk
-          path: AstroWall/app/build/outputs/apk/debug/app-debug.apk
+        with: { name: astro-apk, path: "**/build/outputs/apk/debug/app-debug.apk" }
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          files: AstroWall/app/build/outputs/apk/debug/app-debug.apk
+          files: "**/build/outputs/apk/debug/app-debug.apk"
