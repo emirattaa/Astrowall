@@ -18,6 +18,7 @@ class MainActivity : Activity() {
         window.statusBarColor = Color.BLACK
         window.navigationBarColor = Color.BLACK
         val prefs = getSharedPreferences("p", 0)
+        Thread { try { Real.refresh(this, false); Real.refresh(this, true) } catch (e: Exception) {} }.start()
         val menu = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
